@@ -133,7 +133,7 @@ export function History({ logs, toolById }: {
                 <li key={log.id}>
                   <span className="log-time">{new Date(log.at).toTimeString().slice(0, 5)}</span>
                   <span className="log-tool">{tool?.name ?? '（已删除的工具）'}</span>
-                  <span className="log-amount">-{log.amount} {tool?.unit ?? ''}</span>
+                  {log.amount > 0 && <span className="log-amount">-{log.amount} {tool?.unit ?? ''}</span>}
                   <span className="log-task">{log.task ?? ''}</span>
                 </li>
               )

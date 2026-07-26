@@ -39,20 +39,31 @@ export default function App() {
 
   const toolById = useMemo(() => new Map(data.tools.map((t) => [t.id, t])), [data.tools])
 
-  function addUsage(tool: Tool, amount: number, task: string) {
+  function addUsage(tool: Tool, poolIndex: number, amount: number, task: string) {
     const log: UsageLog = { id: uid(), toolId: tool.id, amount, task: task || undefined, at: new Date().toISOString() }
     setData((d) => ({
       ...d,
       logs: [log, ...d.logs],
-      tools: d.tools.map((t) => (t.id === tool.id ? { ...t, used: t.used + amount } : t)),
+      tools: d.tools.map((t) => {
+        if (t.id !== tool.id || poolIndex < 0) return t
+        return {
+          ...t,
+          pools: t.pools.map((p, i) => (i === poolIndex ? { ...p, used: p.used + amount } : p)),
+        }
+      }),
     }))
     setQuickLog(null)
   }
 
   function resetTool(tool: Tool) {
+    const now = new Date().toISOString()
     setData((d) => ({
       ...d,
-      tools: d.tools.map((t) => (t.id === tool.id ? { ...t, used: 0, lastReset: new Date().toISOString() } : t)),
+      tools: d.tools.map((t) =>
+        t.id === tool.id
+          ? { ...t, pools: t.pools.map((p) => ({ ...p, used: 0, lastReset: now })) }
+          : t,
+      ),
     }))
   }
 

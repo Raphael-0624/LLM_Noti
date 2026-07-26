@@ -1,36 +1,50 @@
-import type { AppData, Tool } from '../types'
-import { nextResetAt } from '../storage'
-
-function remaining(t: Tool) {
-  return Math.max(0, t.quota - t.used)
-}
+import type { AppData, QuotaPool, Tool } from '../types'
+import { nextResetAt, poolRemaining, toolRemaining } from '../storage'
 
 function isExpired(t: Tool, now: Date) {
-  return t.billing === 'paid' && !!t.validTo && new Date(t.validTo + 'T23:59:59') < now
+  return !!t.validTo && new Date(t.validTo + 'T23:59:59') < now
 }
 
 function isUsable(t: Tool, now: Date) {
-  return remaining(t) > 0 && !isExpired(t, now)
+  if (isExpired(t, now)) return false
+  return t.unlimited || toolRemaining(t) > 0
 }
 
-function resetLabel(t: Tool, now: Date): string {
-  const r = t.reset
-  if (r.kind === 'manual') return '手动重置'
-  const next = nextResetAt(t, now)!
+function resetLabel(p: QuotaPool, now: Date): string | null {
+  const r = p.reset
+  if (r.kind === 'manual') return null
+  const next = nextResetAt(r, now)!
   if (r.kind === 'daily') {
     const mins = Math.max(0, Math.round((next.getTime() - now.getTime()) / 60_000))
     const hhmm = `${String(r.hour).padStart(2, '0')}:${String(r.minute).padStart(2, '0')}`
-    return `${hhmm} 重置 · 还剩 ${Math.floor(mins / 60)}h${mins % 60}m`
+    return `${p.label} ${hhmm} 重置 · 还剩 ${Math.floor(mins / 60)}h${mins % 60}m`
   }
   const days = Math.ceil((next.getTime() - now.getTime()) / 86_400_000)
-  return `每月${r.day}日重置 · 还剩 ${days} 天`
+  return `${p.label}每月${r.day}日重置 · 还剩 ${days} 天`
 }
 
-function paidLabel(t: Tool, now: Date): string {
-  if (!t.validTo) return '付费'
+function validityLabel(t: Tool, now: Date): string | null {
+  if (!t.validTo) return null
   if (isExpired(t, now)) return '已过期'
   const days = Math.ceil((new Date(t.validTo + 'T23:59:59').getTime() - now.getTime()) / 86_400_000)
   return `有效期至 ${t.validTo} · 剩 ${days} 天`
+}
+
+function PoolRow({ pool, unit, showLabel }: { pool: QuotaPool; unit: string; showLabel: boolean }) {
+  const rest = poolRemaining(pool)
+  const pct = pool.quota > 0 ? Math.min(100, (pool.used / pool.quota) * 100) : 0
+  const low = rest > 0 && pct >= 80
+  return (
+    <div className="pool-row">
+      <div className="quota-line">
+        {showLabel && <span className="pool-label">{pool.label}</span>}
+        <b>{rest}</b> / {pool.quota} {unit}
+        {low && <span className="low-tag">告急</span>}
+        {rest <= 0 && <span className="depleted-tag">已用尽</span>}
+      </div>
+      <div className="bar"><div className={`bar-fill ${low ? 'low' : ''}`} style={{ width: `${pct}%` }} /></div>
+    </div>
+  )
 }
 
 function ToolCard({ tool, now, onPick }: {
@@ -38,10 +52,11 @@ function ToolCard({ tool, now, onPick }: {
   now: Date
   onPick: (t: Tool) => void
 }) {
-  const rest = remaining(tool)
-  const pct = tool.quota > 0 ? Math.min(100, (tool.used / tool.quota) * 100) : 0
   const usable = isUsable(tool, now)
-  const low = usable && pct >= 80
+  const meta = [
+    ...tool.pools.map((p) => resetLabel(p, now)).filter(Boolean).slice(0, 1),
+    validityLabel(tool, now),
+  ].filter(Boolean)
   return (
     <div
       className={`card ${usable ? '' : 'depleted'}`}
@@ -59,15 +74,17 @@ function ToolCard({ tool, now, onPick }: {
         </span>
         <span className={`badge ${tool.billing}`}>{tool.billing === 'free' ? '免费' : '付费'}</span>
       </div>
-      <div className="quota-line">
-        <b>{rest}</b> / {tool.quota} {tool.unit}
-        {low && <span className="low-tag">告急</span>}
-        {!usable && <span className="depleted-tag">{isExpired(tool, now) ? '已过期' : '已用尽'}</span>}
-      </div>
-      <div className="bar"><div className={`bar-fill ${low ? 'low' : ''}`} style={{ width: `${pct}%` }} /></div>
-      <div className="card-meta">
-        {tool.billing === 'free' ? resetLabel(tool, now) : paidLabel(tool, now)}
-      </div>
+      {tool.unlimited ? (
+        <div className="quota-line unlimited-line">
+          <b>∞</b> 不限量
+          {isExpired(tool, now) && <span className="depleted-tag">已过期</span>}
+        </div>
+      ) : (
+        tool.pools.map((p, i) => (
+          <PoolRow key={i} pool={p} unit={tool.unit} showLabel={tool.pools.length > 1} />
+        ))
+      )}
+      {meta.length > 0 && <div className="card-meta">{meta.join(' · ')}</div>}
     </div>
   )
 }
