@@ -41,6 +41,7 @@ function ToolCard({ tool, now, onLog, onReset }: {
   const rest = remaining(tool)
   const pct = tool.quota > 0 ? Math.min(100, (tool.used / tool.quota) * 100) : 0
   const usable = isUsable(tool, now)
+  const low = usable && pct >= 80
   return (
     <div className={`card ${usable ? '' : 'depleted'}`}>
       <div className="card-head">
@@ -51,9 +52,10 @@ function ToolCard({ tool, now, onLog, onReset }: {
       </div>
       <div className="quota-line">
         <b>{rest}</b> / {tool.quota} {tool.unit}
+        {low && <span className="low-tag">告急</span>}
         {!usable && <span className="depleted-tag">{isExpired(tool, now) ? '已过期' : '已用尽'}</span>}
       </div>
-      <div className="bar"><div className="bar-fill" style={{ width: `${pct}%` }} /></div>
+      <div className="bar"><div className={`bar-fill ${low ? 'low' : ''}`} style={{ width: `${pct}%` }} /></div>
       <div className="card-meta">
         {tool.billing === 'free' ? resetLabel(tool, now) : paidLabel(tool, now)}
       </div>

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { ClockCounterClockwise, SquaresFour, Wrench } from '@phosphor-icons/react'
 import type { AppData, Tool, UsageLog } from './types'
 import { loadData, rolloverTools, saveData, uid } from './storage'
 import { Dashboard } from './views/Dashboard'
@@ -7,6 +8,12 @@ import { ToolManager } from './views/ToolManager'
 import { UsageModal } from './views/UsageModal'
 
 type Tab = 'dashboard' | 'history' | 'tools'
+
+const TABS = [
+  { key: 'dashboard' as Tab, label: '看板', Icon: SquaresFour },
+  { key: 'history' as Tab, label: '历史', Icon: ClockCounterClockwise },
+  { key: 'tools' as Tab, label: '工具', Icon: Wrench },
+]
 
 export default function App() {
   const [data, setData] = useState<AppData>(() => {
@@ -53,10 +60,13 @@ export default function App() {
     <div className="app">
       <header>
         <h1>LLM Noti</h1>
-        <nav>
-          <button className={tab === 'dashboard' ? 'active' : ''} onClick={() => setTab('dashboard')}>今日看板</button>
-          <button className={tab === 'history' ? 'active' : ''} onClick={() => setTab('history')}>历史</button>
-          <button className={tab === 'tools' ? 'active' : ''} onClick={() => setTab('tools')}>工具管理</button>
+        <nav className="tabs" aria-label="主导航">
+          {TABS.map(({ key, label, Icon }) => (
+            <button key={key} className={tab === key ? 'active' : ''} onClick={() => setTab(key)}>
+              <Icon size={22} weight={tab === key ? 'fill' : 'regular'} aria-hidden />
+              <span>{label}</span>
+            </button>
+          ))}
         </nav>
       </header>
 

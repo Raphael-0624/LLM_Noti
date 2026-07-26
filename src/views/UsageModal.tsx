@@ -17,8 +17,12 @@ export function UsageModal({ tool, onSubmit, onClose }: {
         <h3>记一笔 · {tool.name}</h3>
         <label>
           消耗量（{tool.unit}）
-          <input autoFocus type="number" min="0" step="any" value={amount}
-            onChange={(e) => setAmount(e.target.value)} />
+          <div className="stepper">
+            <button type="button" aria-label="减少" onClick={() => setAmount(String(Math.max(0, (Number(amount) || 0) - 1)))}>−</button>
+            <input autoFocus type="number" min="0" step="any" inputMode="decimal" value={amount}
+              onChange={(e) => setAmount(e.target.value)} />
+            <button type="button" aria-label="增加" onClick={() => setAmount(String((Number(amount) || 0) + 1))}>+</button>
+          </div>
         </label>
         <label>
           任务描述（可选）
