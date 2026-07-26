@@ -1,5 +1,5 @@
 import type { AppData, Tool } from '../types'
-import { lastDueReset } from '../storage'
+import { nextResetAt } from '../storage'
 
 function remaining(t: Tool) {
   return Math.max(0, t.quota - t.used)
@@ -14,15 +14,16 @@ function isUsable(t: Tool, now: Date) {
 }
 
 function resetLabel(t: Tool, now: Date): string {
-  if (t.reset.kind === 'manual') return '手动重置'
-  const due = lastDueReset(t, now)!
-  const next = new Date(due)
-  next.setDate(next.getDate() + 1)
-  const mins = Math.round((next.getTime() - now.getTime()) / 60_000)
-  const h = Math.floor(mins / 60)
-  const m = mins % 60
-  const hhmm = `${String(t.reset.hour).padStart(2, '0')}:${String(t.reset.minute).padStart(2, '0')}`
-  return `${hhmm} 重置 · 还剩 ${h}h${m}m`
+  const r = t.reset
+  if (r.kind === 'manual') return '手动重置'
+  const next = nextResetAt(t, now)!
+  if (r.kind === 'daily') {
+    const mins = Math.max(0, Math.round((next.getTime() - now.getTime()) / 60_000))
+    const hhmm = `${String(r.hour).padStart(2, '0')}:${String(r.minute).padStart(2, '0')}`
+    return `${hhmm} 重置 · 还剩 ${Math.floor(mins / 60)}h${mins % 60}m`
+  }
+  const days = Math.ceil((next.getTime() - now.getTime()) / 86_400_000)
+  return `每月${r.day}日重置 · 还剩 ${days} 天`
 }
 
 function paidLabel(t: Tool, now: Date): string {
@@ -32,21 +33,29 @@ function paidLabel(t: Tool, now: Date): string {
   return `有效期至 ${t.validTo} · 剩 ${days} 天`
 }
 
-function ToolCard({ tool, now, onLog, onReset }: {
+function ToolCard({ tool, now, onPick }: {
   tool: Tool
   now: Date
-  onLog: (t: Tool) => void
-  onReset: (t: Tool) => void
+  onPick: (t: Tool) => void
 }) {
   const rest = remaining(tool)
   const pct = tool.quota > 0 ? Math.min(100, (tool.used / tool.quota) * 100) : 0
   const usable = isUsable(tool, now)
   const low = usable && pct >= 80
   return (
-    <div className={`card ${usable ? '' : 'depleted'}`}>
+    <div
+      className={`card ${usable ? '' : 'depleted'}`}
+      role="button"
+      tabIndex={0}
+      aria-label={`${tool.name}，点击记一笔`}
+      onClick={() => onPick(tool)}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onPick(tool) } }}
+    >
       <div className="card-head">
         <span className="tool-name">
-          {tool.url ? <a href={tool.url} target="_blank" rel="noreferrer">{tool.name}</a> : tool.name}
+          {tool.url
+            ? <a href={tool.url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>{tool.name}</a>
+            : tool.name}
         </span>
         <span className={`badge ${tool.billing}`}>{tool.billing === 'free' ? '免费' : '付费'}</span>
       </div>
@@ -59,18 +68,13 @@ function ToolCard({ tool, now, onLog, onReset }: {
       <div className="card-meta">
         {tool.billing === 'free' ? resetLabel(tool, now) : paidLabel(tool, now)}
       </div>
-      <div className="card-actions">
-        <button className="primary" onClick={() => onLog(tool)}>记一笔</button>
-        {tool.reset.kind === 'manual' && <button onClick={() => onReset(tool)}>重置额度</button>}
-      </div>
     </div>
   )
 }
 
-export function Dashboard({ data, onLog, onReset, onGoConfig }: {
+export function Dashboard({ data, onPick, onGoConfig }: {
   data: AppData
-  onLog: (t: Tool) => void
-  onReset: (t: Tool) => void
+  onPick: (t: Tool) => void
   onGoConfig: () => void
 }) {
   const now = new Date()
@@ -94,7 +98,7 @@ export function Dashboard({ data, onLog, onReset, onGoConfig }: {
           <section key={cat}>
             <h2>{cat}</h2>
             <div className="cards">
-              {tools.map((t) => <ToolCard key={t.id} tool={t} now={now} onLog={onLog} onReset={onReset} />)}
+              {tools.map((t) => <ToolCard key={t.id} tool={t} now={now} onPick={onPick} />)}
             </div>
           </section>
         )
@@ -103,7 +107,7 @@ export function Dashboard({ data, onLog, onReset, onGoConfig }: {
         <section>
           <h2>未分类</h2>
           <div className="cards">
-            {uncategorized.map((t) => <ToolCard key={t.id} tool={t} now={now} onLog={onLog} onReset={onReset} />)}
+            {uncategorized.map((t) => <ToolCard key={t.id} tool={t} now={now} onPick={onPick} />)}
           </div>
         </section>
       )}

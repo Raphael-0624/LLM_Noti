@@ -73,6 +73,9 @@ section h2 { font-size: 13px; color: var(--muted); margin: 24px 0 10px; letter-s
   background: var(--panel); border: 1px solid var(--border); border-radius: 14px;
   padding: 14px 16px; display: flex; flex-direction: column; gap: 8px;
 }
+.card { cursor: pointer; transition: transform .1s ease, border-color .15s ease; }
+.card:hover { border-color: var(--accent); }
+.card:active { transform: scale(.985); }
 .card.depleted { opacity: .55; }
 .card-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .tool-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
@@ -87,8 +90,6 @@ section h2 { font-size: 13px; color: var(--muted); margin: 24px 0 10px; letter-s
 .bar-fill { height: 100%; background: var(--accent); border-radius: 3px; }
 .bar-fill.low { background: var(--warn-fill); }
 .card-meta { font-size: 12px; color: var(--muted); }
-.card-actions { display: flex; gap: 8px; margin-top: 2px; }
-.card-actions .primary { flex: 1; }
 
 .empty { text-align: center; color: var(--muted); padding: 60px 0; }
 
@@ -110,6 +111,29 @@ input, select {
   border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px;
   width: 100%; min-height: 44px;
 }
+.field { display: flex; flex-direction: column; gap: 8px; }
+.field-label { font-size: 13px; color: var(--muted); }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  border: 1px solid var(--border); background: var(--bg); color: var(--text);
+  border-radius: 99px; padding: 6px 14px; min-height: 36px; font-size: 13px;
+}
+.chip.on { background: var(--accent); border-color: var(--accent); color: var(--accent-text); font-weight: 600; }
+.chip.dim { opacity: .5; }
+.chip i { font-style: normal; margin-left: 6px; font-size: 11px; opacity: .75; font-variant-numeric: tabular-nums; }
+
+.fab {
+  position: fixed; right: 20px; bottom: 24px; z-index: 16;
+  width: 56px; height: 56px; border-radius: 50%;
+  background: var(--accent); border-color: var(--accent); color: var(--accent-text);
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 6px 20px rgba(16, 24, 40, .25); padding: 0;
+}
+
+.form-modal { max-height: 85dvh; overflow-y: auto; }
+.form-row { display: flex; gap: 12px; }
+.form-row label { flex: 1; }
+
 .stepper { display: flex; gap: 8px; }
 .stepper input { text-align: center; flex: 1; }
 .stepper button { width: 52px; flex-shrink: 0; font-size: 20px; line-height: 1; }
@@ -155,13 +179,8 @@ input, select {
 /* ---- 工具管理 ---- */
 .manager-bar { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
 .spacer { flex: 1; }
-.tool-form {
-  background: var(--panel); border: 1px solid var(--border); border-radius: 14px;
-  padding: 18px 20px; margin-bottom: 16px; display: flex; flex-direction: column; gap: 14px;
-}
-.tool-form h3 { margin: 0; font-size: 15px; }
-.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 16px; }
 .tool-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.tool-cell { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .tool-list li {
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
   background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 10px 14px;
@@ -186,7 +205,8 @@ input, select {
   nav.tabs button.active { background: none; box-shadow: none; }
 
   .cards { grid-template-columns: 1fr; }
-  .form-grid { grid-template-columns: 1fr; }
+  .form-row { flex-direction: column; }
+  .fab { bottom: calc(80px + env(safe-area-inset-bottom)); }
 
   .modal-mask { align-items: flex-end; padding: 0; }
   .modal {

@@ -1,16 +1,16 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ClockCounterClockwise, SquaresFour, Wrench } from '@phosphor-icons/react'
+import { ClockCounterClockwise, House, Plus, Wrench } from '@phosphor-icons/react'
 import type { AppData, Tool, UsageLog } from './types'
 import { loadData, rolloverTools, saveData, uid } from './storage'
 import { Dashboard } from './views/Dashboard'
 import { History } from './views/History'
 import { ToolManager } from './views/ToolManager'
-import { UsageModal } from './views/UsageModal'
+import { QuickLogSheet } from './views/QuickLogSheet'
 
-type Tab = 'dashboard' | 'history' | 'tools'
+type Tab = 'home' | 'history' | 'tools'
 
 const TABS = [
-  { key: 'dashboard' as Tab, label: '看板', Icon: SquaresFour },
+  { key: 'home' as Tab, label: '首页', Icon: House },
   { key: 'history' as Tab, label: '历史', Icon: ClockCounterClockwise },
   { key: 'tools' as Tab, label: '工具', Icon: Wrench },
 ]
@@ -21,8 +21,8 @@ export default function App() {
     const { tools, changed } = rolloverTools(d.tools)
     return changed ? { ...d, tools } : d
   })
-  const [tab, setTab] = useState<Tab>('dashboard')
-  const [usageFor, setUsageFor] = useState<Tool | null>(null)
+  const [tab, setTab] = useState<Tab>('home')
+  const [quickLog, setQuickLog] = useState<{ tool: Tool | null } | null>(null)
 
   useEffect(() => saveData(data), [data])
 
@@ -46,7 +46,7 @@ export default function App() {
       logs: [log, ...d.logs],
       tools: d.tools.map((t) => (t.id === tool.id ? { ...t, used: t.used + amount } : t)),
     }))
-    setUsageFor(null)
+    setQuickLog(null)
   }
 
   function resetTool(tool: Tool) {
@@ -70,13 +70,26 @@ export default function App() {
         </nav>
       </header>
 
-      {tab === 'dashboard' && (
-        <Dashboard data={data} onLog={setUsageFor} onReset={resetTool} onGoConfig={() => setTab('tools')} />
+      {tab === 'home' && (
+        <Dashboard data={data} onPick={(t) => setQuickLog({ tool: t })} onGoConfig={() => setTab('tools')} />
       )}
       {tab === 'history' && <History logs={data.logs} toolById={toolById} />}
-      {tab === 'tools' && <ToolManager data={data} setData={setData} />}
+      {tab === 'tools' && <ToolManager data={data} setData={setData} onReset={resetTool} />}
 
-      {usageFor && <UsageModal tool={usageFor} onSubmit={addUsage} onClose={() => setUsageFor(null)} />}
+      {tab !== 'tools' && data.tools.length > 0 && (
+        <button className="fab" aria-label="记一笔" onClick={() => setQuickLog({ tool: null })}>
+          <Plus size={26} weight="bold" aria-hidden />
+        </button>
+      )}
+
+      {quickLog && (
+        <QuickLogSheet
+          tools={data.tools}
+          initialTool={quickLog.tool}
+          onSubmit={addUsage}
+          onClose={() => setQuickLog(null)}
+        />
+      )}
     </div>
   )
 }
